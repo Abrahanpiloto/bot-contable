@@ -2,7 +2,14 @@ import "dotenv/config";
 import { Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import { CronJob } from "cron";
-import { appendGuardaditos, appendRow } from "./sheets.js";
+import {
+  appendGuardaditos,
+  appendRow,
+  getAllRows,
+  parseRows,
+  getLastRow,
+  deleteLastRow,
+} from "./sheets.js";
 import { parseMessage } from "./ai.js";
 
 const token = process.env.TELEGRAM_TOKEN;
@@ -30,19 +37,185 @@ bot.use((ctx, next) => {
   return next();
 });
 
+// --- Helpers fecha America/Lima ---
+function getTodayInLima() {
+  return new Date()
+    .toLocaleDateString("es-PE", {
+      timeZone: "America/Lima",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    })
+    .replace(/\//g, "-");
+}
+
+function parseFechaDDMMAAAA(str) {
+  const [dd, mm, yyyy] = str.split("-").map(Number);
+  return new Date(yyyy, mm - 1, dd);
+}
+
+function formatRow(r) {
+  return `${r.fecha} ${r.hora} | ${r.tipo} ${r.monto} PEN | ${r.categoria} | ${r.nota}`;
+}
+
+// Estado para /borrar_ultimo confirmación
+let pendingDelete = null; // { userId, row }
+
 bot.start((ctx) =>
-  ctx.reply("Hola mundo — bot contable activo. Envíame un mensaje."),
+  ctx.reply(
+    "Hola mundo — bot contable activo. Envíame un mensaje.\nComandos: /balance /hoy /semana /por_categoria /borrar_ultimo",
+  ),
 );
-bot.command("balance", (ctx) =>
-  ctx.reply("Comando /balance aún no implementado (Fase 4)."),
-);
-bot.command("hoy", (ctx) =>
-  ctx.reply("Comando /hoy aún no implementado (Fase 4)."),
-);
+
+// --- Fase 4: Comandos contables (JS hace las sumas) ---
+
+bot.command("balance", async (ctx) => {
+  try {
+    const rows = await getAllRows();
+    const data = parseRows(rows);
+    if (data.length === 0) return ctx.reply("Hoja vacía, aún no hay registros.");
+
+    let ingresos = 0;
+    let gastos = 0;
+    const porCategoria = {};
+    for (const r of data) {
+      if (r.tipo === "ingreso") ingresos += r.monto;
+      else if (r.tipo === "gasto") {
+        gastos += r.monto;
+        porCategoria[r.categoria] = (porCategoria[r.categoria] || 0) + r.monto;
+      }
+    }
+    const balance = ingresos - gastos;
+    let mayorCat = "-";
+    let mayorMonto = 0;
+    for (const [cat, total] of Object.entries(porCategoria)) {
+      if (total > mayorMonto) {
+        mayorMonto = total;
+        mayorCat = cat;
+      }
+    }
+    const pctMayor = gastos ? ((mayorMonto / gastos) * 100).toFixed(1) : "0.0";
+    return ctx.reply(
+      `Balance (PEN):\nIngresos: ${ingresos}\nGastos: ${gastos}\nBalance: ${balance}\nMayor gasto: ${mayorCat} ${mayorMonto} PEN (${pctMayor}%)`,
+    );
+  } catch (err) {
+    console.error("Error /balance:", err.message);
+    return ctx.reply(`Error en /balance: ${err.message}`);
+  }
+});
+
+bot.command("hoy", async (ctx) => {
+  try {
+    const today = getTodayInLima();
+    const rows = await getAllRows();
+    const data = parseRows(rows).filter((r) => r.fecha === today);
+    if (data.length === 0) return ctx.reply(`Hoy ${today}: sin movimientos.`);
+    let gastos = 0;
+    let ingresos = 0;
+    const lines = data.map((r) => {
+      if (r.tipo === "gasto") gastos += r.monto;
+      else ingresos += r.monto;
+      return `- ${formatRow(r)}`;
+    });
+    return ctx.reply(
+      `Hoy ${today} (${data.length} movs):\n${lines.join("\n")}\nTotal gastos: ${gastos} PEN | ingresos: ${ingresos} PEN`,
+    );
+  } catch (err) {
+    console.error("Error /hoy:", err.message);
+    return ctx.reply(`Error en /hoy: ${err.message}`);
+  }
+});
+
+bot.command("semana", async (ctx) => {
+  try {
+    const todayStr = getTodayInLima();
+    const todayDate = parseFechaDDMMAAAA(todayStr);
+    const hace7 = new Date(todayDate);
+    hace7.setDate(todayDate.getDate() - 6);
+    const rows = await getAllRows();
+    const data = parseRows(rows).filter((r) => {
+      const d = parseFechaDDMMAAAA(r.fecha);
+      return d >= hace7 && d <= todayDate;
+    });
+    if (data.length === 0)
+      return ctx.reply(`Últimos 7 días (${todayStr}): sin movimientos.`);
+    let gastos = 0;
+    let ingresos = 0;
+    const lines = data.map((r) => {
+      if (r.tipo === "gasto") gastos += r.monto;
+      else ingresos += r.monto;
+      return `- ${formatRow(r)}`;
+    });
+    return ctx.reply(
+      `Últimos 7 días (${hace7.toLocaleDateString("es-PE", { timeZone: "America/Lima" }).replace(/\//g, "-")} al ${todayStr}) (${data.length} movs):\n${lines.join("\n")}\nTotal gastos: ${gastos} PEN | ingresos: ${ingresos} PEN`,
+    );
+  } catch (err) {
+    console.error("Error /semana:", err.message);
+    return ctx.reply(`Error en /semana: ${err.message}`);
+  }
+});
+
+bot.command("por_categoria", async (ctx) => {
+  try {
+    const rows = await getAllRows();
+    const data = parseRows(rows).filter((r) => r.tipo === "gasto");
+    if (data.length === 0) return ctx.reply("Sin gastos registrados.");
+    const totales = {};
+    let totalGastos = 0;
+    for (const r of data) {
+      totales[r.categoria] = (totales[r.categoria] || 0) + r.monto;
+      totalGastos += r.monto;
+    }
+    const sorted = Object.entries(totales).sort((a, b) => b[1] - a[1]);
+    const lines = sorted.map(([cat, tot]) => {
+      const pct = ((tot / totalGastos) * 100).toFixed(1);
+      return `- ${cat}: ${tot} PEN (${pct}%)`;
+    });
+    return ctx.reply(
+      `Gastos por categoría (total ${totalGastos} PEN):\n${lines.join("\n")}`,
+    );
+  } catch (err) {
+    console.error("Error /por_categoria:", err.message);
+    return ctx.reply(`Error en /por_categoria: ${err.message}`);
+  }
+});
+
+bot.command("borrar_ultimo", async (ctx) => {
+  try {
+    const last = await getLastRow();
+    if (!last) return ctx.reply("Hoja vacía, nada que borrar.");
+    pendingDelete = { userId: String(ctx.from.id), row: last };
+    return ctx.reply(
+      `Último registro:\n${formatRow(last)}\n¿Borrar? Responde sí para confirmar o cualquier otro texto para cancelar.`,
+    );
+  } catch (err) {
+    console.error("Error /borrar_ultimo:", err.message);
+    return ctx.reply(`Error en /borrar_ultimo: ${err.message}`);
+  }
+});
 
 bot.on(message("text"), async (ctx) => {
   const text = ctx.message.text;
   console.log(`Mensaje de ${ctx.from.id}: ${text}`);
+
+  // Si hay borrado pendiente, este texto es la confirmación
+  if (pendingDelete && String(ctx.from.id) === pendingDelete.userId) {
+    const norm = text.trim().toLowerCase();
+    const isSi = norm === "sí" || norm === "si" || norm === "sí," || norm === "si," || norm === "sì";
+    const row = pendingDelete.row;
+    pendingDelete = null;
+    if (isSi) {
+      try {
+        await deleteLastRow();
+        return ctx.reply(`Borrado: ${formatRow(row)}`);
+      } catch (err) {
+        console.error("Error borrando:", err.message);
+        return ctx.reply(`Error al borrar: ${err.message}`);
+      }
+    } else {
+      return ctx.reply("Cancelado, no se borró nada.");
+    }
+  }
 
   if (text.startsWith("/")) return;
 
