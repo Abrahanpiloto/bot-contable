@@ -61,11 +61,59 @@ function formatRow(r) {
 // Estado para /borrar_ultimo confirmación
 let pendingDelete = null; // { userId, row }
 
+// --- Texto compartido /comandos + saludo ---
+const COMANDOS_TEXT =
+  `Comandos disponibles:\n` +
+  `/start — activa y muestra bienvenida\n` +
+  `/balance — ingresos, gastos y balance (PEN)\n` +
+  `/hoy — movimientos de hoy (America/Lima)\n` +
+  `/semana — últimos 7 días\n` +
+  `/por_categoria — gastos por categoría con %\n` +
+  `/borrar_ultimo — muestra último y espera sí para borrar\n` +
+  `/comandos — esta lista`;
+
+function buildGreeting(ctx) {
+  const name = ctx.from?.first_name || "Abrahan";
+  return (
+    `Hola ${name}, soy un bot que te ayudará con tu economía día a día, fui desarrollado por Abrahan Piloto.\n\n` +
+    `${COMANDOS_TEXT}\n\n` +
+    `Ejemplo: escribe "gasté 18 soles en almuerzo hoy" o "me pagaron 200 de freelance" y lo registro en tu hoja.`
+  );
+}
+
+// Detecta saludo puro (sin monto ni movimiento): hola, buenas, etc.
+function isGreeting(text) {
+  const norm = text
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[!¡?¿.,;:()"-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return [
+    "hola",
+    "buenas",
+    "buenos dias",
+    "buenas tardes",
+    "buenas noches",
+    "hey",
+    "holi",
+    "saludos",
+    "que tal",
+    "como estas",
+    "hola bot",
+  ].includes(norm);
+}
+
 bot.start((ctx) =>
   ctx.reply(
-    "Hola mundo — bot contable activo. Envíame un mensaje.\nComandos: /balance /hoy /semana /por_categoria /borrar_ultimo",
+    `${buildGreeting(ctx)}`,
   ),
 );
+
+bot.command("comandos", (ctx) => ctx.reply(COMANDOS_TEXT));
+bot.command("help", (ctx) => ctx.reply(COMANDOS_TEXT));
 
 // --- Fase 4: Comandos contables (JS hace las sumas) ---
 
@@ -212,12 +260,20 @@ bot.on(message("text"), async (ctx) => {
         console.error("Error borrando:", err.message);
         return ctx.reply(`Error al borrar: ${err.message}`);
       }
+    } else if (isGreeting(text)) {
+      return ctx.reply(`Cancelado, no se borró nada.\n\n${buildGreeting(ctx)}`);
     } else {
       return ctx.reply("Cancelado, no se borró nada.");
     }
   }
 
   if (text.startsWith("/")) return;
+
+  // Saludo puro antes de DeepSeek (ahorra costo IA)
+  if (isGreeting(text)) {
+    console.log(`Saludo de ${ctx.from.id}: ${text}`);
+    return ctx.reply(buildGreeting(ctx));
+  }
 
   try {
     const data = await parseMessage(text);
