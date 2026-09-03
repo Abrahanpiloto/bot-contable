@@ -101,9 +101,18 @@ Texto del usuario: """${text}"""`;
   // Validation in JavaScript (do not trust AI for totals, PLAN.md:67)
   if (!["gasto", "ingreso", "aclarar"].includes(data.tipo))
     data.tipo = "aclarar";
+  // Acepta montos numéricos o strings con coma/punto ("20,51" / "20.51")
+  if (typeof data.monto === "string") {
+    const s = data.monto.trim().replace(/\s+/g, "");
+    const norm = s.includes(",") && !s.includes(".") ? s.replace(",", ".") : s.replace(/,/g, "");
+    const n = Number(norm);
+    data.monto = Number.isNaN(n) ? null : n;
+  }
   if (
     data.monto !== null &&
-    (typeof data.monto !== "number" || data.monto <= 0)
+    (typeof data.monto !== "number" ||
+      Number.isNaN(data.monto) ||
+      data.monto <= 0)
   )
     data.monto = null;
   if (data.tipo === "aclarar") {

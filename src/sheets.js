@@ -95,6 +95,29 @@ export async function getAllRows() {
 
 // --- Fase 4: helpers (JS hace las sumas, no DeepSeek) ---
 
+// Parsea montos que Sheets devuelve como string con coma peruana ("20,51")
+// o punto ("20.51"), con o sin miles ("1.234,56" / "1,234.56").
+export function parseMonto(v) {
+  if (typeof v === "number") return Number.isNaN(v) ? 0 : v;
+  if (v === null || v === undefined) return 0;
+  let s = String(v).trim().replace(/\s+/g, "").replace(/[A-Za-z$€£S/%]+/g, "");
+  if (!s) return 0;
+  const hasDot = s.includes(".");
+  const hasComma = s.includes(",");
+  if (hasDot && hasComma) {
+    // El último separador es el decimal
+    if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    s = s.replace(",", ".");
+  }
+  const n = Number(s);
+  return Number.isNaN(n) ? 0 : n;
+}
+
 // Convierte filas crudas en objetos, salta encabezado si existe
 export function parseRows(rows) {
   if (!rows || rows.length === 0) return [];
@@ -104,7 +127,7 @@ export function parseRows(rows) {
     fecha: r[0] || "",
     hora: r[1] || "",
     tipo: r[2] || "",
-    monto: Number(r[3] || 0),
+    monto: parseMonto(r[3]),
     moneda: r[4] || "PEN",
     categoria: r[5] || "Otros",
     nota: r[6] || "",
