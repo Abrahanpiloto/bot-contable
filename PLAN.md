@@ -310,18 +310,18 @@ Reglas obligatorias:
 - [Google Sheets API: agregar valores](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append)
 - [Northflank Buildpacks](https://northflank.com/docs/v1/application/build/build-with-buildpacks)
 
-## 10. Estado actual
+## 10. Estado actual — PROYECTO COMPLETADO 03-09-2026
 
-- El bot de Telegram ya fue creado y probado con polling (/start → Hola mundo).
-- TELEGRAM_TOKEN y TELEGRAM_USER_ID (8899605189) ya existen en .env y pasan el guardia bot.use.
-- Proyecto Node.js inicializado con pnpm (pnpm init), type: module (ESM), dependencias telegraf, dotenv, openai (para DeepSeek), googleapis, cron 4.4.0.
-- DEEPSEEK_API_KEY creada en platform.deepseek.com y probada: `node src/ai.js "gasté 10 en gasolina hoy"` → gasto 10 PEN Gasolina OK (deepseek-v4-flash).
-- src/ai.js con CATEGORIES 20 (sin Servicios, con Delivery, MarketPlace, Guardaditos-bcp) y parseMessage() validado.
-- src/sheets.js con appendRow/appendGuardaditos (mock si SHEET_ID=dummy) y cron Guardaditos-bcp diario 07:00 America/Lima en src/bot.js (activo).
-- src/bot.js integrado con parseMessage + appendRow: responde Registrado o ¿Fue gasto o ingreso? según DeepSeek.
-- Pendiente: configurar Google Sheet real (SHEET_ID y GOOGLE_SERVICE_ACCOUNT_JSON), y Fase 4 comandos contables (/balance, /hoy, etc.).
-- .env ya no contiene OPENAI_API_KEY/OPENAI_MODEL, solo DEEPSEEK_API_KEY.
-- Siguiente paso: configurar Google Sheets y probar flujo completo Telegram → DeepSeek → Sheets.
+- Fases 0-6 completadas y desplegadas en Northflank (Buildpack, `Running`). Ver `INFORME-2026-09-03.md`.
+- Bot Telegram verificado con polling + `bot.use` (TELEGRAM_USER_ID 8899605189).
+- Proyecto Node.js con pnpm (type: module ESM), dependencias telegraf, dotenv, openai (para DeepSeek), googleapis, cron 4.4.0. `package.json` con `start: node src/bot.js`, `engines node 22.x`, `packageManager pnpm@11.8.0` (fix EBADDEVENGINES).
+- DEEPSEEK_API_KEY probada: `node src/ai.js "gasté 10 en gasolina hoy"` → gasto 10 PEN Gasolina OK (deepseek-v4-flash).
+- src/ai.js con CATEGORIES 20 y parseMessage() validado (acepta monto string con coma peruana "20,51").
+- src/sheets.js con appendRow/appendGuardaditos/getAllRows + parseRows/parseMonto/getLastRow/deleteLastRow (mock si SHEET_ID=dummy). Sheet real conectado (`Hoja1!A:G` exacta) y flujo Telegram → DeepSeek → Sheets probado.
+- src/bot.js integrado con parseMessage + appendRow + comandos Fase 4 (/balance, /hoy, /semana, /por_categoria, /borrar_ultimo con confirmación sí/si) + /comandos, /help y saludo con presentación. Cron Guardaditos-bcp diario 07:00 America/Lima activo.
+- .env solo con DEEPSEEK_API_KEY (sin OPENAI_*). Commits main=development=943aa71.
+- Este PLAN.md queda como documento histórico de diseño. Para operación ver README.md e INFORME-2026-09-03.md.
+- Pendiente solo operativo: verificar fila Guardaditos-bcp automática 04-09-2026 07:00, limpiar filas de prueba, vigilar billing Northflank/DeepSeek.
 
 ## Mostrar
 

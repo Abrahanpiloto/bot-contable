@@ -219,8 +219,8 @@ Recarga en `platform.deepseek.com/billing`. Saldo no expira. `402 Insufficient B
 - [x] Fase 3: Sheets real `TU_SHEET_ID` + `Hoja1` + service account + `appendRow`
 - [x] Fase 3bis: Cron Guardaditos `07:00 America/Lima`
 - [x] Fase 4: Comandos `/balance /hoy /semana /por_categoria /borrar_ultimo` (JS calcula)
-- [x] Fase 5: Seguridad y errores (guard, 402, permisos, hoja vacía, confirmación `sí`)
-- [ ] Fase 6: Northflank Buildpack deploy 24/7 (siguiente)
+- [x] Fase 5: Seguridad y errores (guard, 402, permisos, hoja vacía, confirmación `sí`/`si`)
+- [x] Fase 6: Northflank Buildpack deploy 24/7 — `Build succeeded` → `Running`, `/balance` OK desde la nube (03-09-2026). Extras: `/comandos`, `/help`, saludo con presentación, `parseMonto("20,51")`.
 
 ---
 
