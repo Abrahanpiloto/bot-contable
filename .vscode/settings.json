@@ -1,0 +1,23 @@
+{
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 100,
+  "editor.rulers": [100],
+  "editor.wrappingStrategy": "advanced",
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "prettier.printWidth": 100,
+  "prettier.singleQuote": false,
+  "prettier.trailingComma": "all",
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[dotenv]": {
+    "editor.wordWrap": "on"
+  }
+}

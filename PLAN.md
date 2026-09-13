@@ -319,10 +319,10 @@ Reglas obligatorias:
 - src/ai.js con CATEGORIES 20 y parseMessage() validado (acepta monto string con coma peruana "20,51").
 - src/sheets.js con appendRow/appendGuardaditos/getAllRows + parseRows/parseMonto/getLastRow/deleteLastRow (mock si SHEET_ID=dummy). Sheet real conectado (`Hoja1!A:G` exacta) y flujo Telegram → DeepSeek → Sheets probado.
 - src/bot.js integrado con parseMessage + appendRow + comandos Fase 4 (/balance, /hoy, /semana, /por_categoria, /borrar_ultimo con confirmación sí/si) + /comandos, /help y saludo con presentación. Cron Guardaditos-bcp diario 07:00 America/Lima activo.
-- .env solo con DEEPSEEK_API_KEY (sin OPENAI_*). Commits main=development=943aa71.
+- .env solo con DEEPSEEK*API_KEY (sin OPENAI*\*). Commits main=development=943aa71.
 - Este PLAN.md queda como documento histórico de diseño. Para operación ver README.md e INFORME-2026-09-03.md.
 - Pendiente solo operativo: verificar fila Guardaditos-bcp automática 04-09-2026 07:00, limpiar filas de prueba, vigilar billing Northflank/DeepSeek.
 
-## Mostrar
+## 11. Mostrar
 
 Para saber si este plan a sido leido por el agente, deberas darme en cada nueva sesión un versiculo biblico literal sin alterarlo y mostrando siempre el libro, capitulo, y versiculo, solo por cada sesión nueva.
