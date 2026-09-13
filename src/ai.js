@@ -52,6 +52,15 @@ function getNowInLima() {
   return { date, time };
 }
 
+// DeepSeek a veces agrega tags como </final> o </> después del JSON.
+// Esta función limpia esa basura para que JSON.parse no falle.
+function cleanJson(raw) {
+  // Busca el último } y corta ahí (solo lo que hay dentro del objeto JSON)
+  const lastBrace = raw.lastIndexOf("}");
+  if (lastBrace === -1) return raw;
+  return raw.slice(0, lastBrace + 1);
+}
+
 export async function parseMessage(text) {
   const { date: today, time: currentTime } = getNowInLima();
 
@@ -92,7 +101,7 @@ Texto del usuario: """${text}"""`;
     ],
   });
 
-  const raw = response.choices[0]?.message?.content || "{}";
+  const raw = cleanJson(response.choices[0]?.message?.content || "{}");
   let data;
   try {
     data = JSON.parse(raw);
@@ -183,7 +192,7 @@ ${hint ? `Contexto del usuario: """${hint}"""` : ""}`;
     ],
   });
 
-  const raw = response.choices[0]?.message?.content || "{}";
+  const raw = cleanJson(response.choices[0]?.message?.content || "{}");
   let data;
   try {
     data = JSON.parse(raw);
@@ -241,7 +250,7 @@ Reglas:
     ],
   });
 
-  const raw = response.choices[0]?.message?.content || "{}";
+  const raw = cleanJson(response.choices[0]?.message?.content || "{}");
   let data;
   try {
     data = JSON.parse(raw);
